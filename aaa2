@@ -1,0 +1,144 @@
+-- Rayfield 読み込み
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "じゃがHub",
+    LoadingTitle = "Loading...",
+    LoadingSubtitle = "by Jaga",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "JagaHubConfig"
+    }
+})
+
+local Main = Window:CreateTab("Main", 4483362458)
+
+local player = game.Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- ▼ サブGUI（リスポーンしても消えない）
+local subGui = Instance.new("ScreenGui")
+subGui.Name = "SubGui"
+subGui.IgnoreGuiInset = true
+subGui.ResetOnSpawn = false
+subGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+subGui.DisplayOrder = 1000
+subGui.Parent = PlayerGui
+subGui.Enabled = false
+
+-- ▼ 共通デザイン関数
+local function createStyledButton(name, pos)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0,120,0,40)
+    button.Position = pos
+    button.Text = name
+    button.TextColor3 = Color3.fromRGB(0,0,0)
+    button.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    button.AutoButtonColor = true
+    button.Active = true
+    button.Selectable = false
+    button.Parent = subGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0,20)
+    corner.Parent = button
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(0,200,255)
+    stroke.Parent = button
+
+    return button
+end
+
+-- ▼ 回復ボタン
+local healButton = createStyledButton("回復", UDim2.new(0.5,-60,0.5,-100))
+local autoHeal = false
+healButton.MouseButton1Click:Connect(function()
+    autoHeal = not autoHeal
+    if autoHeal then
+        healButton.Text = "回復 ON"
+        task.spawn(function()
+            while autoHeal do
+                task.wait(0.1)
+                local c = player.Character
+                if c then
+                    local h = c:FindFirstChildOfClass("Humanoid")
+                    if h and h.Health < h.MaxHealth then
+                        h.Health = h.MaxHealth
+                    end
+                end
+            end
+        end)
+    else
+        healButton.Text = "回復 OFF"
+    end
+end)
+
+-- ▼ 透明ボタン
+local invisibleButton = createStyledButton("透明", UDim2.new(0.5,-60,0.5,-50))
+local isInvisible = false
+invisibleButton.MouseButton1Click:Connect(function()
+    isInvisible = not isInvisible
+    local c = player.Character
+    if c then
+        for _, part in ipairs(c:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Transparency = isInvisible and 1 or 0
+                if part.Name == "Head" then
+                    local face = part:FindFirstChild("face")
+                    if face then
+                        face.Transparency = isInvisible and 1 or 0
+                    end
+                end
+            elseif part:IsA("Accessory") then
+                local handle = part:FindFirstChild("Handle")
+                if handle then
+                    handle.Transparency = isInvisible and 1 or 0
+                end
+            elseif part:IsA("Decal") then
+                part.Transparency = isInvisible and 1 or 0
+            end
+        end
+    end
+    invisibleButton.Text = isInvisible and "透明 ON" or "透明 OFF"
+end)
+
+-- ▼ 地面モードボタン
+local groundButton = createStyledButton("地面モード", UDim2.new(0.5,-60,0.5,0))
+local fakeDown = false
+groundButton.MouseButton1Click:Connect(function()
+    fakeDown = not fakeDown
+    local c = player.Character
+    if c and c:FindFirstChild("HumanoidRootPart") then
+        local root = c.HumanoidRootPart
+        task.spawn(function()
+            while fakeDown and c and c:FindFirstChild("HumanoidRootPart") do
+                task.wait()
+                -- Raycastで床の高さを取得
+                local ray = RaycastParams.new()
+                ray.FilterDescendantsInstances = {c}
+                ray.FilterType = Enum.RaycastFilterType.Blacklist
+                local result = workspace:Raycast(root.Position, Vector3.new(0,-1000,0), ray)
+                if result then
+                    local pos = result.Position
+                    for _, part in ipairs(c:GetChildren()) do
+                        if part:IsA("BasePart") and part ~= root then
+                            part.CFrame = CFrame.new(pos.X, pos.Y + part.Size.Y/2, pos.Z)
+                        end
+                    end
+                end
+            end
+        end)
+    end
+    groundButton.Text = fakeDown and "地面 ON" or "地面 OFF"
+end)
+
+-- ▼ Rayfield ボタンでサブGUIの表示/非表示
+Main:CreateButton({
+    Name = "サブGUIを表示/非表示",
+    Callback = function()
+        subGui.Enabled = not subGui.Enabled
+    end,
+})
