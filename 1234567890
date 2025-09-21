@@ -1,0 +1,103 @@
+-- Rayfield 読み込み
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "走るなネオン",
+    LoadingTitle = "Loading...",
+    LoadingSubtitle = "by 障害",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "JagaHubConfig"
+    }
+})
+
+local Main = Window:CreateTab("Main", 4483362458)
+
+local player = game.Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- サブGUI
+local subGui = Instance.new("ScreenGui")
+subGui.Name = "SubGui"
+subGui.Parent = PlayerGui
+subGui.Enabled = false  -- 最初は非表示
+
+-- 回復ボタン（小さめ）
+local healButton = Instance.new("TextButton")
+healButton.Size = UDim2.new(0,120,0,40)  
+healButton.Position = UDim2.new(0.5,-60,0.5,-20) 
+healButton.Text = "回復"
+healButton.TextColor3 = Color3.fromRGB(0,0,0)
+healButton.BackgroundColor3 = Color3.fromRGB(255,255,255)
+healButton.Parent = subGui
+
+-- 丸角
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0,20)
+corner.Parent = healButton
+
+-- 水色の枠
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(0,200,255)
+stroke.Parent = healButton
+
+-- 自動回復機能
+local autoHeal = false
+healButton.MouseButton1Click:Connect(function()
+    autoHeal = not autoHeal
+    if autoHeal then
+        healButton.Text = "回復 ON"
+        spawn(function()
+            local p = game.Players.LocalPlayer
+            local c = p.Character or p.CharacterAdded:Wait()
+            local h = c:WaitForChild("Humanoid")
+            while autoHeal do
+                task.wait(0.1)
+                if h.Health < h.MaxHealth then
+                    h.Health = h.MaxHealth
+                end
+            end
+        end)
+    else
+        healButton.Text = "回復 OFF"
+    end
+end)
+
+-- 🔹 ドラッグ移動処理
+local UserInputService = game:GetService("UserInputService")
+local dragging = false
+local dragStart, startPos
+
+healButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = healButton.Position
+    end
+end)
+
+healButton.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        healButton.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-- Rayfield ボタンでサブGUIの表示切替
+Main:CreateButton({
+    Name = "サブGUIを表示/非表示",
+    Callback = function()
+        subGui.Enabled = not subGui.Enabled
+    end,
+})
